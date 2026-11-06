@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copa 24 - Torneo de Tenis</title>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --accent: #22c55e; --accent2: #16a34a; --text: #f1f5f9; --muted: #94a3b8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 1rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+  header { text-align: center; padding: 1.5rem 0 1rem; }
+  h1 { font-size: 2.2rem; color: var(--accent); }
+  .subtitle { color: var(--muted); margin-top: .25rem; }
+  .card { background: var(--card); border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+  h2 { font-size: 1.25rem; margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+  input, button, select { font-size: 1rem; padding: .65rem .9rem; border-radius: 10px; border: none; }
+  input, select { background: #334155; color: white; width: 100%; margin-bottom: .5rem; }
+  button { background: var(--accent); color: #052e16; font-weight: 600; cursor: pointer; transition: .15s; }
+  button:hover { background: var(--accent2); }
+  button.secondary { background: #475569; color: white; }
+  button.danger { background: #ef4444; color: white; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 140px; }
+  .players { display: grid; gap: .5rem; }
+  .player { display: flex; justify-content: space-between; align-items: center; background: #334155; padding: .6rem .8rem; border-radius: 10px; }
+  .badge { background: var(--accent); color: #052e16; font-size: .75rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 700; }
+  .bracket { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem; }
+  .round { background: #0f172a; padding: 1rem; border-radius: 12px; }
+  .match { display: flex; justify-content: space-between; align-items: center; background: #334155; margin: .4rem 0; padding: .5rem .7rem; border-radius: 8px; font-size: .95rem; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 2rem; }
+  @media (max-width: 600px) { h1 { font-size: 1.8rem; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎾 Copa 24</h1>
+    <p class="subtitle">Torneo de tenis · 8 jugadores · Eliminatoria directa</p>
+  </header>
+  <div class="card">
+    <h2>📝 Inscripciones <span id="count" class="badge">0/8</span></h2>
+    <div class="row">
+      <input id="name" placeholder="Nombre del jugador" maxlength="30">
+      <input id="phone" placeholder="WhatsApp (opcional)" maxlength="20">
+    </div>
+    <button onclick="addPlayer()">Anotar jugador</button>
+    <div id="players" class="players" style="margin-top:1rem;"></div>
+  </div>
+  <div class="card">
+    <h2>🏆 Bracket</h2>
+    <div class="row">
+      <button onclick="generateBracket()">Generar / Regenerar bracket</button>
+      <button class="secondary" onclick="clearAll()">Limpiar todo</button>
+    </div>
+    <div id="bracket" class="bracket"></div>
+  </div>
+  <footer>Copa 24 · Mini app · Datos guardados en este navegador</footer>
+</div>
+<script>
+const STORAGE_KEY = 'copa24_players';
+let players = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); render(); }
+function addPlayer() {
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  if (!name) return alert('Escribí un nombre');
+  if (players.length >= 8) return alert('Ya hay 8 jugadores');
+  if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) return alert('Ese nombre ya está anotado');
+  players.push({ id: Date.now(), name, phone });
+  document.getElementById('name').value = '';
+  document.getElementById('phone').value = '';
+  save();
+}
+function removePlayer(id) { if (confirm('¿Sacar a este jugador?')) { players = players.filter(p => p.id !== id); save(); } }
+function render() {
+  const list = document.getElementById('players');
+  const count = document.getElementById('count');
+  count.textContent = players.length + '/8';
+  if (players.length === 0) { list.innerHTML = '<p style="color:var(--muted)">Todavía no hay nadie anotado</p>'; return; }
+  list.innerHTML = players.map(p => `<div class="player"><div><strong>${p.name}</strong>${p.phone ? `<br><small style="color:var(--muted)">${p.phone}</small>` : ''}</div><button class="danger" style="padding:.3rem .6rem;font-size:.85rem" onclick="removePlayer(${p.id})">X</button></div>`).join('');
+}
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function generateBracket() {
+  if (players.length < 2) return alert('Necesitás al menos 2 jugadores');
+  const names = shuffle([...players.map(p => p.name)]);
+  while (names.length < 8 && names.length > 0) names.push('BYE');
+  const bracketEl = document.getElementById('bracket');
+  let rounds = []; let current = names; const roundNames = ['Cuartos de final', 'Semifinales', 'Final']; let r = 0;
+  while (current.length > 1) {
+    const matches = [];
+    for (let i = 0; i < current.length; i += 2) matches.push([current[i], current[i+1] || 'BYE']);
+    rounds.push({ name: roundNames[r] || 'Ronda', matches });
+    current = matches.map(() => 'Ganador'); r++;
+  }
+  bracketEl.innerHTML = rounds.map(round => `<div class="round"><h3 style="margin-bottom:.5rem">${round.name}</h3>${round.matches.map(m => `<div class="match"><span>${m[0]}</span><span style="color:var(--muted)">vs</span><span>${m[1]}</span></div>`).join('')}</div>`).join('');
+}
+function clearAll() { if (confirm('¿Borrar todos los jugadores y el bracket?')) { players = []; localStorage.removeItem(STORAGE_KEY); document.getElementById('bracket').innerHTML = ''; render(); } }
+render();
+</script>
+</body>
+</html>
